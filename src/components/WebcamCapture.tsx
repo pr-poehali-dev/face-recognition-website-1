@@ -1,11 +1,14 @@
 
 import { useEffect, useRef, useState } from "react";
+import { Button } from "./ui/button";
+import { Camera, CameraOff, Scissors } from "lucide-react";
 
 interface WebcamCaptureProps {
-  onFrame?: (canvas: HTMLCanvasElement) => void;
+  onCapture?: (imageUrl: string) => void;
+  onCameraToggle?: (isActive: boolean) => void;
 }
 
-export const WebcamCapture = ({ onFrame }: WebcamCaptureProps) => {
+export const WebcamCapture = ({ onCapture, onCameraToggle }: WebcamCaptureProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isActive, setIsActive] = useState(false);
@@ -22,6 +25,7 @@ export const WebcamCapture = ({ onFrame }: WebcamCaptureProps) => {
       videoRef.current.srcObject = stream;
       setIsActive(true);
       setError(null);
+      if (onCameraToggle) onCameraToggle(true);
     } catch (err) {
       setError("Не удалось получить доступ к камере. Пожалуйста, убедитесь, что камера подключена и вы дали разрешение на её использование.");
       console.error("Ошибка доступа к камере:", err);
@@ -38,34 +42,38 @@ export const WebcamCapture = ({ onFrame }: WebcamCaptureProps) => {
       videoRef.current.srcObject = null;
     }
     setIsActive(false);
+    if (onCameraToggle) onCameraToggle(false);
   };
 
-  useEffect(() => {
-    if (!isActive || !videoRef.current || !canvasRef.current || !onFrame) return;
+  const captureFrame = () => {
+    if (!videoRef.current || !canvasRef.current || !onCapture) return;
     
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const context = canvas.getContext('2d');
+    
     if (!context) return;
     
-    let animationId: number;
+    // Установка размеров canvas в соответствии с видео
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
     
-    const updateCanvas = () => {
-      if (video.readyState === 4) {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        onFrame(canvas);
-      }
-      animationId = requestAnimationFrame(updateCanvas);
-    };
+    // Отрисовка текущего кадра видео на canvas
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
     
-    animationId = requestAnimationFrame(updateCanvas);
-    
+    // Преобразование canvas в URL данных изображения
+    const imageUrl = canvas.toDataURL('image/png');
+    onCapture(imageUrl);
+  };
+
+  // Очистка при размонтировании компонента
+  useEffect(() => {
     return () => {
-      cancelAnimationFrame(animationId);
+      if (isActive) {
+        stopCamera();
+      }
     };
-  }, [isActive, onFrame]);
+  }, [isActive]);
 
   return (
     <div className="relative flex flex-col items-center">
@@ -79,25 +87,37 @@ export const WebcamCapture = ({ onFrame }: WebcamCaptureProps) => {
         />
         <canvas
           ref={canvasRef}
-          className="absolute inset-0 w-full h-full pointer-events-none"
+          className="hidden" // Скрываем canvas, он нужен только для обработки
         />
       </div>
       
-      <div className="flex space-x-4">
+      <div className="flex flex-wrap justify-center gap-4">
         {!isActive ? (
-          <button
+          <Button
             onClick={startCamera}
-            className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors shadow-md"
+            className="bg-purple-600 hover:bg-purple-700 transition-colors"
           >
+            <Camera className="mr-2 h-4 w-4" />
             Включить камеру
-          </button>
+          </Button>
         ) : (
-          <button
-            onClick={stopCamera}
-            className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-md"
-          >
-            Выключить камеру
-          </button>
+          <>
+            <Button
+              onClick={captureFrame}
+              className="bg-green-600 hover:bg-green-700 transition-colors"
+            >
+              <Scissors className="mr-2 h-4 w-4" />
+              Сделать снимок
+            </Button>
+            
+            <Button
+              onClick={stopCamera}
+              className="bg-red-600 hover:bg-red-700 transition-colors"
+            >
+              <CameraOff className="mr-2 h-4 w-4" />
+              Выключить камеру
+            </Button>
+          </>
         )}
       </div>
       

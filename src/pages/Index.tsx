@@ -1,16 +1,26 @@
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { WebcamCapture } from "../components/WebcamCapture";
+import { Button } from "../components/ui/button";
+import { Download } from "lucide-react";
 
 export default function Index() {
-  const [detectionCount, setDetectionCount] = useState(0);
-  
-  const handleFrame = (canvas: HTMLCanvasElement) => {
-    // В будущем здесь можно добавить логику распознавания лиц
-    // Пока просто симулируем случайное количество лиц для демонстрации интерфейса
-    const randomFaces = Math.floor(Math.random() * 3);
-    if (Math.random() > 0.9) { // Обновляем не слишком часто
-      setDetectionCount(randomFaces);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const downloadLinkRef = useRef<HTMLAnchorElement>(null);
+
+  const handleCapture = (imageUrl: string) => {
+    setCapturedImage(imageUrl);
+  };
+
+  const handleCameraToggle = (active: boolean) => {
+    setIsCameraActive(active);
+  };
+
+  const handleDownload = () => {
+    if (capturedImage && downloadLinkRef.current) {
+      downloadLinkRef.current.href = capturedImage;
+      downloadLinkRef.current.click();
     }
   };
 
@@ -18,37 +28,63 @@ export default function Index() {
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100">
       <div className="container mx-auto px-4 py-12">
         <div className="text-center mb-10">
-          <h1 className="text-4xl font-bold text-gray-900 mb-3">Распознавание лиц</h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-3">Веб-камера</h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Система для распознавания лиц с веб-камеры вашего устройства в реальном времени
+            Демонстрация изображения с веб-камеры и захват кадров
           </p>
         </div>
         
         <div className="max-w-3xl mx-auto">
           <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-            <WebcamCapture onFrame={handleFrame} />
+            <WebcamCapture 
+              onCapture={handleCapture} 
+              onCameraToggle={handleCameraToggle} 
+            />
           </div>
           
-          <div className="bg-white rounded-xl shadow-lg p-6 animate-fade-in">
-            <h2 className="text-2xl font-semibold mb-4 text-gray-800">Результаты</h2>
-            
-            <div className="flex items-center justify-center p-4 bg-purple-50 rounded-lg mb-4">
-              <div className="text-center">
-                <div className="text-4xl font-bold text-purple-600 mb-2">{detectionCount}</div>
-                <div className="text-gray-600">
-                  {detectionCount === 1 ? "лицо обнаружено" : 
-                   detectionCount > 1 && detectionCount < 5 ? "лица обнаружено" : 
-                   "лиц обнаружено"}
-                </div>
+          {capturedImage && (
+            <div className="bg-white rounded-xl shadow-lg p-6 animate-fade-in">
+              <h2 className="text-2xl font-semibold mb-4 text-gray-800">Сохраненный кадр</h2>
+              
+              <div className="mb-4 overflow-hidden rounded-lg shadow-md">
+                <img 
+                  src={capturedImage} 
+                  alt="Захваченный кадр" 
+                  className="w-full h-auto"
+                />
+              </div>
+              
+              <div className="flex justify-center">
+                <Button
+                  onClick={handleDownload}
+                  className="bg-purple-600 hover:bg-purple-700 transition-colors"
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Скачать изображение
+                </Button>
+                <a 
+                  ref={downloadLinkRef} 
+                  download="webcam-capture.png" 
+                  className="hidden"
+                />
               </div>
             </div>
-            
-            <div className="text-gray-600 text-sm">
-              <p className="mb-2">
-                <strong>Примечание:</strong> Это базовая демонстрация. Текущая версия использует стандартное API камеры без реального распознавания лиц.
+          )}
+
+          {!isCameraActive && !capturedImage && (
+            <div className="bg-white rounded-xl shadow-lg p-6 animate-fade-in text-center">
+              <h2 className="text-xl font-semibold mb-3 text-gray-800">Как это работает</h2>
+              <p className="text-gray-600 mb-3">
+                1. Нажмите кнопку "Включить камеру", чтобы разрешить доступ к веб-камере
+              </p>
+              <p className="text-gray-600 mb-3">
+                2. Когда камера активна, нажмите "Сделать снимок", чтобы захватить текущий кадр
+              </p>
+              <p className="text-gray-600">
+                3. Сохраните изображение с помощью кнопки "Скачать изображение"
               </p>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
